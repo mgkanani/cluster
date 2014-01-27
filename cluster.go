@@ -1,4 +1,4 @@
-package Cluster
+package cluster
 
 import (
 	"encoding/json"
@@ -162,6 +162,8 @@ func (ser ServerType) GetMsg(enve chan *Envelope) {
 			fmt.Println("error:", err)
 		}
 
+		//fmt.Println("In InBox(GetMsg):-",ser.MyPid, x)
+
 		if x.Pid == -1 {
 			//BroadCast
 			enve <- &x
@@ -170,7 +172,6 @@ func (ser ServerType) GetMsg(enve chan *Envelope) {
 			//Unicast
 			enve <- &x
 		}
-		//fmt.Println("In InBox(GetMsg)\n", x)
 	}
 }
 
