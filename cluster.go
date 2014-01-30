@@ -19,7 +19,7 @@ type Envelope struct {
 	// Id is always set to the original sender. If the Id is not found, the message is silently dropped
 	Pid int
 
-	Sen_Pid int
+//	Sen_Pid int
 
 	// An id that globally and uniquely identifies the message, meant for duplicate detection at
 	// higher levels. It is opaque to this package.
@@ -108,27 +108,29 @@ func New(pid int, filenm string) ServerType {
 func (ser ServerType) SendMsg(enve chan *Envelope) {
 	for {
 		x := <-enve
-		x.Sen_Pid = ser.MyPid
+		des_id := x.Pid
+		x.Pid=ser.MyPid
+		//x.Sen_Pid = ser.MyPid
 		//fmt.Println(ser.Map, ser.PeerIds)
 		//fmt.Println("In OutBox(SendMsg) Message:-", *x)
-		if x.Pid == -1 {
+		//if x.Pid == -1 {
+		if des_id == -1 {
 			//BroadCast
 			for i := 0; i < len(ser.PeerIds); i++ {
-				str := strconv.Itoa(ser.PeerIds[i])
-				//fmt.Println("Map[", str, "]=", ser.Map[strconv.Itoa(ser.PeerIds[i])])
-				/*				dealer, _ := zmq.NewSocket(zmq.DEALER)
-								dealer.Connect("tcp://" + ser.Map[strconv.Itoa(ser.PeerIds[i])])
-				*/
+				//retrieve peers in round-robin manner. for peers[2,3,4],'1' will send to '2' and then 3 and then 4. simillarly '2' will send to 3,4 and then 1.
+				str := strconv.Itoa(ser.PeerIds[(i+ser.MyPid-1)%len(ser.PeerIds)])
+				//to verify order of sending uncomment below line.
+				//fmt.Println("Peers of ",x.Pid,"are:-",ser.PeerIds," next turn:-",ser.PeerIds[(i+ser.MyPid-1)%len(ser.PeerIds)])
 				data, _ := json.Marshal(*x)
 				//				dealer.Send(string(data), 0)
 				ser.SocketMap[str].Send(string(data), 0)
 			}
 		} else {
 			//Unicast
-			_, ok := ser.Map[strconv.Itoa(x.Pid)]
-			if ok && x.Pid!=ser.MyPid{
+			_, ok := ser.Map[strconv.Itoa(des_id)]//checks if receiving destination exist in config.json data.
+			if ok && x.Pid != ser.MyPid {
 				//fmt.Println("Send Unicast\n")
-				str_pid := strconv.Itoa(x.Pid)
+				str_pid := strconv.Itoa(des_id)
 				//dealer, _ := zmq.NewSocket(zmq.DEALER)
 				//dealer.Connect("tcp://" + ser.Map[strconv.Itoa(x.Pid)])
 				data, _ := json.Marshal(*x)
@@ -163,15 +165,18 @@ func (ser ServerType) GetMsg(enve chan *Envelope) {
 		}
 
 		//fmt.Println("In InBox(GetMsg):-",ser.MyPid, x)
-
-		if x.Pid == -1 {
+		_, ok := ser.Map[strconv.Itoa(x.Pid)]//checks for sender exist in peers' list.
+		//if x.Pid == -1 {
+		if ok {
 			//BroadCast
 			enve <- &x
-		} else if x.Pid == ser.MyPid{
+		} 
+/*		else if x.Pid == ser.MyPid {
 			//fmt.Println("Receive Unicast\n")
 			//Unicast
 			enve <- &x
 		}
+*/
 	}
 }
 
