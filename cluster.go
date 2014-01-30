@@ -19,8 +19,6 @@ type Envelope struct {
 	// Id is always set to the original sender. If the Id is not found, the message is silently dropped
 	Pid int
 
-//	Sen_Pid int
-
 	// An id that globally and uniquely identifies the message, meant for duplicate detection at
 	// higher levels. It is opaque to this package.
 	MsgId int64
@@ -54,11 +52,11 @@ type ServersType struct {
 	Servers []ServerType
 }
 type ServerType struct {
-	Socket    string
-	MyPid     int
-	PeerIds   []int
-	Map       map[string]string
-	SocketMap map[string]*zmq.Socket
+	Socket    string //used to storing socket string for specified pid.
+	MyPid     int //stores Pid.
+	PeerIds   []int //stores Peers' Ids
+	//Map       map[string]string //stores socket strings for each peer with peer's id as index.
+	SocketMap map[string]*zmq.Socket //stores socket object for each peer with peer's id as index.
 	in        chan *Envelope
 	out       chan *Envelope
 }
@@ -77,11 +75,11 @@ func New(pid int, filenm string) ServerType {
 
 	ret_ser := ServerType{Socket: "", MyPid: pid}
 	peers := make([]int, len(servers.Object.Servers)-1)
-	Mp := make(map[string]string)
+	//Mp := make(map[string]string)
 	SocketMp := make(map[string]*zmq.Socket)
 	for i, j := 0, 0; i < len(servers.Object.Servers); i++ {
 		serv := servers.Object.Servers[i]
-		Mp[strconv.Itoa(serv.MyPid)] = serv.Socket
+		//Mp[strconv.Itoa(serv.MyPid)] = serv.Socket
 		if serv.MyPid == pid {
 			//fmt.Printf("%v", serv, Mp)
 			ret_ser.Socket = serv.Socket
@@ -89,12 +87,13 @@ func New(pid int, filenm string) ServerType {
 		} else {
 			peers[j] = serv.MyPid
 			SocketMp[strconv.Itoa(serv.MyPid)], _ = zmq.NewSocket(zmq.DEALER)
-			SocketMp[strconv.Itoa(serv.MyPid)].Connect("tcp://" + Mp[strconv.Itoa(serv.MyPid)])
+			//SocketMp[strconv.Itoa(serv.MyPid)].Connect("tcp://" + Mp[strconv.Itoa(serv.MyPid)])
+			SocketMp[strconv.Itoa(serv.MyPid)].Connect("tcp://" + serv.Socket)
 			j++
 		}
 	}
 	ret_ser.PeerIds = peers
-	ret_ser.Map = Mp
+	//ret_ser.Map = Mp
 	ret_ser.SocketMap = SocketMp
 	//fmt.Println(peers)
 
@@ -110,7 +109,6 @@ func (ser ServerType) SendMsg(enve chan *Envelope) {
 		x := <-enve
 		des_id := x.Pid
 		x.Pid=ser.MyPid
-		//x.Sen_Pid = ser.MyPid
 		//fmt.Println(ser.Map, ser.PeerIds)
 		//fmt.Println("In OutBox(SendMsg) Message:-", *x)
 		//if x.Pid == -1 {
@@ -127,7 +125,8 @@ func (ser ServerType) SendMsg(enve chan *Envelope) {
 			}
 		} else {
 			//Unicast
-			_, ok := ser.Map[strconv.Itoa(des_id)]//checks if receiving destination exist in config.json data.
+			//_, ok := ser.Map[strconv.Itoa(des_id)]//checks if receiving destination exist in config.json data.
+			_, ok := ser.SocketMap[strconv.Itoa(des_id)]//checks if receiving destination exist in config.json data.
 			if ok && x.Pid != ser.MyPid {
 				//fmt.Println("Send Unicast\n")
 				str_pid := strconv.Itoa(des_id)
@@ -165,7 +164,8 @@ func (ser ServerType) GetMsg(enve chan *Envelope) {
 		}
 
 		//fmt.Println("In InBox(GetMsg):-",ser.MyPid, x)
-		_, ok := ser.Map[strconv.Itoa(x.Pid)]//checks for sender exist in peers' list.
+		//_, ok := ser.Map[strconv.Itoa(x.Pid)]//checks for sender exist in peers' list.
+		_, ok := ser.SocketMap[strconv.Itoa(x.Pid)]//checks for sender exist in peers' list.
 		//if x.Pid == -1 {
 		if ok {
 			//BroadCast
