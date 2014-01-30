@@ -16,7 +16,7 @@ var total_msgs int
 
 func TestCluster(t *testing.T) {
 	total_servers=4;
-	total_msgs=10001;
+	total_msgs=5001;
 
 	counter = make(map[int]int)
 	msgs = make(map[int]map[string]string)
@@ -48,7 +48,7 @@ func startServer(id int, wg *sync.WaitGroup) {
 	//go generateLongMsg(ch, server, wg)
 	go generateMsg(ch, server, wg)
 	for {
-		select {
+		select {//used for selecting channel for given event.
 		case envelope := <-server.Inbox():
 			//case <-server.Inbox():
 			str := envelope.Msg.(string)
@@ -79,7 +79,7 @@ func startServer(id int, wg *sync.WaitGroup) {
 func generateMsg(ch chan []byte, ser ServerType, wg *sync.WaitGroup) {
 	//this will generates total 10001 msgs.
 	for i := 0; i < total_msgs; i++ {
-		time.After(1)
+		time.After(10)
 		msg := strconv.Itoa(ser.MyPid) + "." + strconv.Itoa(i)
 		ch <- []byte(msg)
 	}
