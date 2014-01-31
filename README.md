@@ -37,6 +37,31 @@ total_servers=4(linenum 18 in file cluster_test.go),
 total_msgs=5001(linenum 19 in file cluster_test.go)
 ```
 
+#Experiments:-
+```
+totalnumber of servers:-10
+total msgs each Server broadcasts :-300
+msg_size:-65K bytes
+
+```
+###output
+```
+total msgs received at PID - 1 :- 2700 	 sent:- 300
+total msgs received at PID - 2 :- 2700 	 sent:- 300
+total msgs received at PID - 3 :- 2700 	 sent:- 300
+total msgs received at PID - 4 :- 2700 	 sent:- 300
+total msgs received at PID - 5 :- 2700 	 sent:- 300
+total msgs received at PID - 6 :- 2700 	 sent:- 300
+total msgs received at PID - 7 :- 2700 	 sent:- 300
+total msgs received at PID - 8 :- 2700 	 sent:- 300
+total msgs received at PID - 9 :- 2700 	 sent:- 300
+total msgs received at PID - 10 :- 2700 	 sent:- 300
+PASS
+ok  	github.com/mgkanani/cluster	333.525s
+
+```
+
+
 
 #References for basics of ZeroMQ and implemention
 [http://nichol.as/zeromq-an-introduction](http://nichol.as/zeromq-an-introduction)
