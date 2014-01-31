@@ -29,12 +29,12 @@ for testing the msgs tranfer of size > 60000 bytes uncomment lines 48,57 and com
 
 #Default configurations:-
 ```
-Total Servers :- 4
+Total Servers :- 10
 ipaddr:127.0.0.1 
-ports :-12345,12346,12347,12348
-Pids:-1,2,3,4
-total_servers=4(linenum 18 in file cluster_test.go),
-total_msgs=5001(linenum 19 in file cluster_test.go)
+ports :-12345,12346,12347,12348 ... 12354
+Pids:-1,2,3,4 ... 10
+total_servers=10(linenum 18 in file cluster_test.go),
+total_msgs=300(linenum 19 in file cluster_test.go)
 ```
 
 #Experiments:-
