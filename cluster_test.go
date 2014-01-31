@@ -8,24 +8,27 @@ import (
 	"time"
 )
 
-var counter map[int]int            //counts total number of messages received for each PIDs.
-var msgs map[int]map[string]string // stores msg received for each PIDs, len(msgs[i]) will give total unique msgs received at i.
+var counter map[int]int   //counts total number of messages received for each PIDs.
+var s_counter map[int]int //counts total number of messages received for each PIDs.
+//var msgs map[int]map[string]string // stores msg received for each PIDs, len(msgs[i]) will give total unique msgs received at i.
 
 var total_servers int
 var total_msgs int
 
 func TestCluster(t *testing.T) {
-	total_servers = 4
-	total_msgs = 5001
+	total_servers = 10
+	total_msgs = 300
 
 	counter = make(map[int]int)
-	msgs = make(map[int]map[string]string)
+	s_counter = make(map[int]int)
+	//msgs = make(map[int]map[string]string)
 	wg := new(sync.WaitGroup)
 	//fmt.Println(len(t_str),"ok")
 	//go startServer(5,wg)
 	for i := 1; i < total_servers+1; i++ {
-		msgs[i] = make(map[string]string)
+		//msgs[i] = make(map[string]string)
 		counter[i] = 0
+		s_counter[i] = 0
 		wg.Add(1)             //increment wg's counter by 1
 		wg.Add(1)             //increment wg's counter by 1
 		go startServer(i, wg) //server will be started in new thread.
@@ -34,7 +37,8 @@ func TestCluster(t *testing.T) {
 	wg.Wait() //This will wait till wg's count becomes zero.
 	//this will prints the summary of message received for each PIDs.
 	for i := 1; i < total_servers+1; i++ {
-		fmt.Println("total msgs received at PID -", i, ":-", counter[i], "\t total unique msgs:-", len(msgs[i]))
+		//fmt.Println("total msgs received at PID -", i, ":-", counter[i], "\t total unique msgs:-", len(msgs[i]))
+		fmt.Println("total msgs received at PID -", i, ":-", counter[i], "\t sent:-", s_counter[i])
 	}
 }
 
@@ -49,9 +53,10 @@ func startServer(id int, wg *sync.WaitGroup) {
 	go generateMsg(ch, server, wg)
 	for {
 		select { //used for selecting channel for given event.
-		case envelope := <-server.Inbox():
+		//case envelope := <-server.Inbox():
+		case <-server.Inbox():
 			//case <-server.Inbox():
-			str := envelope.Msg.(string)
+			//str := envelope.Msg.(string)
 
 			//to print length of msgs uncomment below line.
 			//fmt.Printf("Received msg at PID -%d from %d: '%d'\n",server.Pid(), envelope.Pid, len(envelope.Msg.(string)))
@@ -60,13 +65,14 @@ func startServer(id int, wg *sync.WaitGroup) {
 			//fmt.Printf("Received msg at PID -%d from %d: '%s'\n",server.Pid(), envelope.Pid, envelope.Msg)
 
 			counter[id]++
-			msgs[id][str] = str
+			//msgs[id][str] = str
 
 		case msg := <-ch:
 			//fmt.Println(Envelope{Pid:temp, Msg: string(msg)});
 			server.Outbox() <- &Envelope{Pid: BROADCAST, Msg: string(msg)}
+			s_counter[id]++
 
-		case <-time.After(2 * time.Second):
+		case <-time.After(5 * time.Second):
 			//println("Waited and waited. Ab thak gaya\n")
 			wg.Done() //waits for 2 seconds,if there is no any events then decrements wg's counter by 1 and exit from this procedure.
 			return
@@ -78,9 +84,15 @@ func startServer(id int, wg *sync.WaitGroup) {
 
 func generateMsg(ch chan []byte, ser ServerType, wg *sync.WaitGroup) {
 	//this will generates total 10001 msgs.
+	t_str := "h"
+	for i := 0; i < 16; i++ {
+		t_str = t_str + t_str
+	}
+	t_str += "0000\n"
+
 	for i := 0; i < total_msgs; i++ {
 		time.After(10)
-		msg := strconv.Itoa(ser.MyPid) + "." + strconv.Itoa(i)
+		msg := t_str + strconv.Itoa(ser.MyPid) + "." + strconv.Itoa(i)
 		ch <- []byte(msg)
 	}
 	wg.Done() //decrements wg's counter by 1
@@ -92,6 +104,7 @@ func generateLongMsg(ch chan []byte, ser ServerType, wg *sync.WaitGroup) {
 	for i := 0; i < 16; i++ {
 		t_str = t_str + t_str
 	}
+	t_str += "0000\n"
 	ch <- []byte(t_str)
 	wg.Done()
 }
