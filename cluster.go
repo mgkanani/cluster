@@ -52,13 +52,13 @@ type ServersType struct {
 	Servers []ServerType
 }
 type ServerType struct {
-	Socket    string //used to storing socket string for specified pid.
-	MyPid     int //stores Pid.
-	PeerIds   []int //stores Peers' Ids
+	Socket  string //used to storing socket string for specified pid.
+	MyPid   int    //stores Pid.
+	PeerIds []int  //stores Peers' Ids
 	//Map       map[string]string //stores socket strings for each peer with peer's id as index.
 	SocketMap map[string]*zmq.Socket //stores socket object for each peer with peer's id as index.
-	in        chan *Envelope //for input channel(Inbox)
-	out       chan *Envelope //for output channel(OutBox)
+	in        chan *Envelope         //for input channel(Inbox)
+	out       chan *Envelope         //for output channel(OutBox)
 }
 
 //Initialises server.
@@ -76,7 +76,7 @@ func New(pid int, filenm string) ServerType {
 		fmt.Println("error:", err)
 	}
 
-	ret_ser := ServerType{Socket: "", MyPid: pid} //creates a new object.
+	ret_ser := ServerType{Socket: "", MyPid: pid}       //creates a new object.
 	peers := make([]int, len(servers.Object.Servers)-1) //create array used for making peerIds' array.
 	//Mp := make(map[string]string)
 	SocketMp := make(map[string]*zmq.Socket)
@@ -102,18 +102,18 @@ func New(pid int, filenm string) ServerType {
 	ret_ser.SocketMap = SocketMp
 	//fmt.Println(peers)
 
-	ret_ser.in, ret_ser.out = make(chan *Envelope), make(chan *Envelope)//creates channels for input and output purpose.
-	go ret_ser.SendMsg(ret_ser.out) //listens for sending data if any available.
-	go ret_ser.GetMsg(ret_ser.in) //listens for receiving data if any available.
+	ret_ser.in, ret_ser.out = make(chan *Envelope), make(chan *Envelope) //creates channels for input and output purpose.
+	go ret_ser.SendMsg(ret_ser.out)                                      //listens for sending data if any available.
+	go ret_ser.GetMsg(ret_ser.in)                                        //listens for receiving data if any available.
 
 	return ret_ser
 }
 
 func (ser ServerType) SendMsg(enve chan *Envelope) {
 	for {
-		x := <-enve //waits for given channel's input.
-		des_id := x.Pid //Save destination action whether it is broadcasting or unicasting.
-		x.Pid=ser.MyPid //update Pid to Sender's Pid.
+		x := <-enve       //waits for given channel's input.
+		des_id := x.Pid   //Save destination action whether it is broadcasting or unicasting.
+		x.Pid = ser.MyPid //update Pid to Sender's Pid.
 
 		//fmt.Println(ser.Map, ser.PeerIds) //used for printing data.
 		//fmt.Println("In OutBox(SendMsg) Message:-", *x)
@@ -133,7 +133,7 @@ func (ser ServerType) SendMsg(enve chan *Envelope) {
 		} else {
 			//Unicast
 			//_, ok := ser.Map[strconv.Itoa(des_id)]//checks if receiving destination exist in config.json data.
-			_, ok := ser.SocketMap[strconv.Itoa(des_id)]//checks if receiving destination exist in config.json data.
+			_, ok := ser.SocketMap[strconv.Itoa(des_id)] //checks if receiving destination exist in config.json data.
 			if ok && x.Pid != ser.MyPid {
 				//fmt.Println("Send Unicast\n")
 				str_pid := strconv.Itoa(des_id)
@@ -158,26 +158,26 @@ func (ser ServerType) GetMsg(enve chan *Envelope) {
 		var x Envelope
 		//fmt.Println("In InBox(GetMsg)\n")
 
-		data, err := socket.Recv(0) //wait for receiving the data.
+		data, err := socket.Recv(0)            //wait for receiving the data.
 		err = json.Unmarshal([]byte(data), &x) //decode message into Envelope object.
-		if err != nil {//error into parsing/decoding
+		if err != nil {                        //error into parsing/decoding
 			fmt.Println("error:", err)
 		}
 
 		//fmt.Println("In InBox(GetMsg):-",ser.MyPid, x)
 		//_, ok := ser.Map[strconv.Itoa(x.Pid)]//checks for sender exist in peers' list.
-		_, ok := ser.SocketMap[strconv.Itoa(x.Pid)]//checks for sender exist in peers' list.
+		_, ok := ser.SocketMap[strconv.Itoa(x.Pid)] //checks for sender exist in peers' list.
 		//if x.Pid == -1 {
 		if ok {
 			//BroadCasted
 			enve <- &x
-		} 
-/*		else if x.Pid == ser.MyPid {
-			//fmt.Println("Receive Unicasted\n")
-			//Unicasted
-			enve <- &x
 		}
-*/
+		/*		else if x.Pid == ser.MyPid {
+					//fmt.Println("Receive Unicasted\n")
+					//Unicasted
+					enve <- &x
+				}
+		*/
 	}
 }
 
@@ -185,6 +185,7 @@ func (ser ServerType) GetMsg(enve chan *Envelope) {
 func (ser ServerType) Pid() int {
 	return ser.MyPid
 }
+
 //returns PeerIds of given server structure
 func (ser ServerType) Peers() []int {
 	return ser.PeerIds
