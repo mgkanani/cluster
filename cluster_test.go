@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	//atomic "sync/atomic"
 	"testing"
 	"time"
 )
 
-var counter map[int]int   //counts total number of messages received for each PIDs.
+var counter map[int]uint32   //counts total number of messages received for each PIDs.
 var s_counter map[int]int //counts total number of messages received for each PIDs.
 //var msgs map[int]map[string]string // stores msg received for each PIDs, len(msgs[i]) will give total unique msgs received at i.
 
@@ -16,10 +17,10 @@ var total_servers int
 var total_msgs int
 
 func TestCluster(t *testing.T) {
-	total_servers = 10
-	total_msgs = 300
+	total_servers = 3
+	total_msgs = 1//3000
 
-	counter = make(map[int]int)
+	counter = make(map[int]uint32)
 	s_counter = make(map[int]int)
 	//msgs = make(map[int]map[string]string)
 	wg := new(sync.WaitGroup)
@@ -65,6 +66,7 @@ func startServer(id int, wg *sync.WaitGroup) {
 			//fmt.Printf("Received msg at PID -%d from %d: '%s'\n",server.Pid(), envelope.Pid, envelope.Msg)
 
 			counter[id]++
+			//atomic.AddUint32(&(counter[id]), 1)
 			//msgs[id][str] = str
 
 		case msg := <-ch:
@@ -85,7 +87,7 @@ func startServer(id int, wg *sync.WaitGroup) {
 func generateMsg(ch chan []byte, ser ServerType, wg *sync.WaitGroup) {
 	//this will generates total 10001 msgs.
 	t_str := "h"
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 3; i++ {
 		t_str = t_str + t_str
 	}
 	t_str += "0000\n"

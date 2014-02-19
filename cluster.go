@@ -52,6 +52,7 @@ type ServersType struct {
 	Servers []ServerType
 }
 type ServerType struct {
+	Valid bool
 	Socket  string //used to storing socket string for specified pid.
 	MyPid   int    //stores Pid.
 	PeerIds []int  //stores Peers' Ids
@@ -91,7 +92,8 @@ func New(pid int, filenm string) ServerType {
 			ret_ser.MyPid = serv.MyPid
 		} else {
 			peers[j] = serv.MyPid
-			SocketMp[strconv.Itoa(serv.MyPid)], _ = zmq.NewSocket(zmq.DEALER)
+			SocketMp[strconv.Itoa(serv.MyPid)], _ = zmq.NewSocket(zmq.PUSH)
+			SocketMp[strconv.Itoa(serv.MyPid)].SetSndtimeo(100)
 			//SocketMp[strconv.Itoa(serv.MyPid)].Connect("tcp://" + Mp[strconv.Itoa(serv.MyPid)])
 			SocketMp[strconv.Itoa(serv.MyPid)].Connect("tcp://" + serv.Socket)
 			j++
@@ -102,15 +104,19 @@ func New(pid int, filenm string) ServerType {
 	ret_ser.SocketMap = SocketMp
 	//fmt.Println(peers)
 
+	ret_ser.Valid=true;
 	ret_ser.in, ret_ser.out = make(chan *Envelope), make(chan *Envelope) //creates channels for input and output purpose.
-	go ret_ser.SendMsg(ret_ser.out)                                      //listens for sending data if any available.
 	go ret_ser.GetMsg(ret_ser.in)                                        //listens for receiving data if any available.
+	go ret_ser.SendMsg(ret_ser.out)                                      //listens for sending data if any available.
 
 	return ret_ser
 }
 
 func (ser ServerType) SendMsg(enve chan *Envelope) {
 	for {
+		if !ser.Valid{
+			return
+		}
 		x := <-enve       //waits for given channel's input.
 		des_id := x.Pid   //Save destination action whether it is broadcasting or unicasting.
 		x.Pid = ser.MyPid //update Pid to Sender's Pid.
@@ -134,8 +140,9 @@ func (ser ServerType) SendMsg(enve chan *Envelope) {
 			//Unicast
 			//_, ok := ser.Map[strconv.Itoa(des_id)]//checks if receiving destination exist in config.json data.
 			_, ok := ser.SocketMap[strconv.Itoa(des_id)] //checks if receiving destination exist in config.json data.
-			if ok && x.Pid != ser.MyPid {
-				//fmt.Println("Send Unicast\n")
+			//if ok && x.Pid != ser.MyPid {
+			if ok {
+				//fmt.Println(*x,"Send Unicast\n")
 				str_pid := strconv.Itoa(des_id)
 				data, _ := json.Marshal(*x)
 				ser.SocketMap[str_pid].Send(string(data), 0) //send data
@@ -147,12 +154,18 @@ func (ser ServerType) SendMsg(enve chan *Envelope) {
 func (ser ServerType) GetMsg(enve chan *Envelope) {
 	str := "tcp://" + ser.Socket
 
-	socket, err := zmq.NewSocket(zmq.DEALER)
+	socket, err := zmq.NewSocket(zmq.PULL)
 	if err != nil {
 		fmt.Println("error:", err)
+		ser.Valid=false
+		return
 	}
-	socket.Bind(str) //listen for data
-
+	err = socket.Bind(str) //listen for data
+	if err != nil {
+		fmt.Println("binding error for",str,err)
+		ser.Valid=false
+		return
+	}
 	for {
 		//x:= <-enve
 		var x Envelope
