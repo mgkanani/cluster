@@ -77,7 +77,7 @@ func New(pid int, filenm string) ServerType {
 		fmt.Println("error:", err)
 	}
 
-	ret_ser := ServerType{Socket: "", MyPid: pid}       //creates a new object.
+	ret_ser := ServerType{Socket: "", MyPid: pid,Valid:true}       //creates a new object.
 	peers := make([]int, len(servers.Object.Servers)-1) //create array used for making peerIds' array.
 	//Mp := make(map[string]string)
 	SocketMp := make(map[string]*zmq.Socket)
@@ -104,15 +104,30 @@ func New(pid int, filenm string) ServerType {
 	ret_ser.SocketMap = SocketMp
 	//fmt.Println(peers)
 
-	ret_ser.Valid=true;
 	ret_ser.in, ret_ser.out = make(chan *Envelope), make(chan *Envelope) //creates channels for input and output purpose.
+
+	str := "tcp://" + ret_ser.Socket
+
+	socket, err := zmq.NewSocket(zmq.PULL)
+	if err != nil {
+		fmt.Println("error:", err)
+		ret_ser.Valid=false
+	}
+	err = socket.Bind(str) //listen for data
+	if err != nil {
+		fmt.Println("binding error for",ret_ser.Pid(),str,err)
+		ret_ser.Valid=false
+	}
+	ret_ser.SocketMap[strconv.Itoa(ret_ser.Pid())]=socket;
+
+
 	go ret_ser.GetMsg(ret_ser.in)                                        //listens for receiving data if any available.
 	go ret_ser.SendMsg(ret_ser.out)                                      //listens for sending data if any available.
 
 	return ret_ser
 }
 
-func (ser ServerType) SendMsg(enve chan *Envelope) {
+func (ser *ServerType) SendMsg(enve chan *Envelope) {
 	for {
 		if !ser.Valid{
 			return
@@ -151,21 +166,8 @@ func (ser ServerType) SendMsg(enve chan *Envelope) {
 	}
 }
 
-func (ser ServerType) GetMsg(enve chan *Envelope) {
-	str := "tcp://" + ser.Socket
-
-	socket, err := zmq.NewSocket(zmq.PULL)
-	if err != nil {
-		fmt.Println("error:", err)
-		ser.Valid=false
-		return
-	}
-	err = socket.Bind(str) //listen for data
-	if err != nil {
-		fmt.Println("binding error for",str,err)
-		ser.Valid=false
-		return
-	}
+func (ser *ServerType) GetMsg(enve chan *Envelope) {
+	socket:= ser.SocketMap[strconv.Itoa(ser.MyPid)]
 	for {
 		//x:= <-enve
 		var x Envelope
